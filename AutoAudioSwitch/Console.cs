@@ -30,12 +30,15 @@ namespace AutoAudioSwitch
 
         private void Console_Load(object sender, EventArgs e)
         {
-            ParseConfig("AutoAudioSwitch.ini");
+            if (ParseConfig("AutoAudioSwitch.ini") == false)
+            {
+                return;
+            }
 
             WqlEventQuery query =
                 new WqlEventQuery("__InstanceCreationEvent",
                 new TimeSpan(0, 0, 1),
-                "TargetInstance ISA 'Win32_Process' and TargetInstance.Name = 'EscapeFromTarkov.exe'");
+                "TargetInstance ISA 'Win32_Process'");
 
             ManagementEventWatcher watcher = new ManagementEventWatcher();
             watcher.Query = query;
@@ -46,27 +49,69 @@ namespace AutoAudioSwitch
 
             Log("Started Watcher");
 
+            Log("Checking if processes are already running:");
 
+            //iterate over processes
+            foreach (SectionData section in config.Sections)
+            {
+                if (CheckProcess(section.SectionName))
+                {
+                    Log(section.SectionName +" is running, changing audio.");
+                    ChangeProcessAudio(section.SectionName);
+                }
+                else
+                {
+                    Log(section.SectionName + " is not running");
+                }
+            }
+         }
 
+        public bool CheckProcess(string name)
+        {
+            try
+            {
+                string Query = "SELECT Name FROM Win32_Process WHERE Name = '" + name + "'";
+                ManagementObjectSearcher mos = new ManagementObjectSearcher(Query);
+
+                if (mos.Get().Count > 0)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            catch 
+            {
+                //ex.HandleException();
+            }
+            return false;
         }
 
         private void HandleEvent(object sender, EventArrivedEventArgs e)
         {
-            Log(String.Format("Process {0} has started, setting audio in 30s",
-            ((ManagementBaseObject)e.NewEvent["TargetInstance"])["Name"]));
+            foreach (SectionData section in config.Sections)
+            {
+                if ((String)((ManagementBaseObject)e.NewEvent["TargetInstance"])["Name"] == section.SectionName) {
+                    Log("Watched process '"+section.SectionName+"' started. Invoking timer in 30 seconds.");
 
-            aTimer = new System.Timers.Timer(30000);
-            aTimer.Elapsed += SetAudioTimer;
-            aTimer.AutoReset = false;
-            aTimer.Enabled = true;
+                    aTimer = new System.Timers.Timer(30000);
+                    aTimer.Elapsed += (senderr, ee) => ChangeProcessAudio(senderr, ee, section.SectionName); ;
+                    aTimer.AutoReset = false;
+                    aTimer.Enabled = true;
+                }
+            }
+
+   //         Log(String.Format("Process {0} has started, setting audio in 30s",
+   //          ((ManagementBaseObject)e.NewEvent["TargetInstance"])["Name"]));
+
+
         }
 
 
         private void Console_Resize(object sender, EventArgs e)
         {
-            //if the form is minimized  
-            //hide it from the task bar  
-            //and show the system tray icon (represented by the NotifyIcon control)  
             if (this.WindowState == FormWindowState.Minimized)
             {
                 Hide();
@@ -112,14 +157,14 @@ namespace AutoAudioSwitch
             notifyIcon1.Visible = false;
         }
 
-        private void ParseConfig(string filename)
+        private bool ParseConfig(string filename)
         {
             Log("Filename: " + filename);
 
             if (!File.Exists(filename))
             {
                 Log("Could not find configuration file");
-                return;
+                return false;
             }
 
             var parser = new FileIniDataParser();
@@ -130,12 +175,16 @@ namespace AutoAudioSwitch
             catch (FileNotFoundException)
             {
                 Log("Could not find configuration file at: " + filename);
+                return false;
             }
             catch (ParsingException e)
             {
                 Log("Unable to parse configuration file [" + filename + "]: " + e.Message);
+                return false;
             }
 
+            Log("Ini file loaded");
+            return true;
             //foreach (SectionData section in config.Sections) {
             //Console.WriteLine(section.SectionName);
 
@@ -146,32 +195,42 @@ namespace AutoAudioSwitch
             //}
         }
 
-        private void SetAudioTimer(Object source, ElapsedEventArgs e)
+        private void ChangeProcessAudio(Object source, ElapsedEventArgs e, string name)
+        {
+            ChangeProcessAudio(name);
+        }
+        private void ChangeProcessAudio(string name)
         {
             System.Diagnostics.Process pProcess = new System.Diagnostics.Process();
             Log("Setting Tarkov Audio To Default");
             pProcess.StartInfo.FileName = @".\SoundVolumeView.exe";
-            pProcess.StartInfo.Arguments = "/SetAppDefault \"DefaultRenderDevice \" 0 \"EscapeFromTarkov.exe\""; //argument
+            pProcess.StartInfo.Arguments = "/SetAppDefault \"DefaultRenderDevice \" 0 \""+name+"\"";
             pProcess.StartInfo.UseShellExecute = false;
             pProcess.StartInfo.RedirectStandardOutput = true;
             pProcess.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
             pProcess.StartInfo.CreateNoWindow = true; //not diplay a windows
             pProcess.Start();
             string output = pProcess.StandardOutput.ReadToEnd(); //The output result
-            Log(output);
+            if (output != "")
+            {
+                Log(output);
+            }
             pProcess.WaitForExit();
 
             pProcess = new System.Diagnostics.Process();
             Log("Setting Tarkov Audio To Go-XLR-Game");
             pProcess.StartInfo.FileName = @".\SoundVolumeView.exe";
-            pProcess.StartInfo.Arguments = "/SetAppDefault \"" + config["EscapeFromTarkov.exe"]["Device"] + "\" 0 \"EscapeFromTarkov.exe\""; //argument
+            pProcess.StartInfo.Arguments = "/SetAppDefault \"" + config["EscapeFromTarkov.exe"]["Device"] + "\" 0 \"" + name + "\"";
             pProcess.StartInfo.UseShellExecute = false;
             pProcess.StartInfo.RedirectStandardOutput = true;
             pProcess.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
             pProcess.StartInfo.CreateNoWindow = true; //not diplay a windows
             pProcess.Start();
             output = pProcess.StandardOutput.ReadToEnd(); //The output result
-            Log(output);
+            if (output != "")
+            {
+                Log(output);
+            }
             pProcess.WaitForExit();
         }
 
