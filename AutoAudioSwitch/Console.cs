@@ -202,9 +202,9 @@ namespace AutoAudioSwitch
         private void ChangeProcessAudio(string name)
         {
             System.Diagnostics.Process pProcess = new System.Diagnostics.Process();
-            Log("Setting Tarkov Audio To Default");
+            Log("Setting " + name + " Audio To Default");
             pProcess.StartInfo.FileName = @".\SoundVolumeView.exe";
-            pProcess.StartInfo.Arguments = "/SetAppDefault \"DefaultRenderDevice \" 0 \""+name+"\"";
+            pProcess.StartInfo.Arguments = "/SetAppDefault \"DefaultRenderDevice \" 0 \"" + name + "\"";
             pProcess.StartInfo.UseShellExecute = false;
             pProcess.StartInfo.RedirectStandardOutput = true;
             pProcess.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
@@ -218,9 +218,9 @@ namespace AutoAudioSwitch
             pProcess.WaitForExit();
 
             pProcess = new System.Diagnostics.Process();
-            Log("Setting Tarkov Audio To Go-XLR-Game");
+            Log("Setting "+ name + " Audio To " + config[name]["Device"]);
             pProcess.StartInfo.FileName = @".\SoundVolumeView.exe";
-            pProcess.StartInfo.Arguments = "/SetAppDefault \"" + config["EscapeFromTarkov.exe"]["Device"] + "\" 0 \"" + name + "\"";
+            pProcess.StartInfo.Arguments = "/SetAppDefault \"" + config[name]["Device"] + "\" 0 \"" + name + "\"";
             pProcess.StartInfo.UseShellExecute = false;
             pProcess.StartInfo.RedirectStandardOutput = true;
             pProcess.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
