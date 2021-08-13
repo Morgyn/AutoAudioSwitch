@@ -15,7 +15,7 @@ using IniParser;
 using IniParser.Model;
 using IniParser.Exceptions;
 
-namespace AutoAudioSwitchpemn
+namespace AutoAudioSwitch
 {
     public partial class Console : Form
     {
