@@ -14,7 +14,9 @@ The format of the ini is:
 ```
 [Application.exe]
 Device=SoundVolumeView\Command-Line\Friendly-ID\Render
+Delay=30
 ```
+Delay is optional, if omitted a default of 30 will be used.
 
 The ini will need to be configured for your use case.
 
