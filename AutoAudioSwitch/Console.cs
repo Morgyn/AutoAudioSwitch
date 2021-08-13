@@ -15,10 +15,12 @@ using IniParser;
 using IniParser.Model;
 using IniParser.Exceptions;
 
-namespace AutoAudioSwitch
+namespace AutoAudioSwitchpemn
 {
     public partial class Console : Form
     {
+        private const string tagName = "1.1";
+        private const int defaultDelay = 30;
         private static System.Timers.Timer aTimer;
         private static IniData config;
         private delegate void SafeCallDelegate(string text);
@@ -30,8 +32,11 @@ namespace AutoAudioSwitch
 
         private void Console_Load(object sender, EventArgs e)
         {
+            Log($"AutoAudioSwitch {tagName}");
+
             if (ParseConfig("AutoAudioSwitch.ini") == false)
             {
+                Log("INI Parsing failed, correct the above errors.");
                 return;
             }
 
@@ -91,12 +96,18 @@ namespace AutoAudioSwitch
 
         private void HandleEvent(object sender, EventArrivedEventArgs e)
         {
+            string processName = (String)((ManagementBaseObject)e.NewEvent["TargetInstance"])["Name"];
             foreach (SectionData section in config.Sections)
             {
-                if ((String)((ManagementBaseObject)e.NewEvent["TargetInstance"])["Name"] == section.SectionName) {
-                    Log("Watched process '"+section.SectionName+"' started. Invoking timer in 30 seconds.");
+                if ( processName == section.SectionName) {
+                    int delay = defaultDelay;
+                    if (section.Keys.ContainsKey("Delay"))
+                    {
+                        delay = Int32.Parse(section.Keys["Delay"]);
+                    }
+                    Log("Watched process '"+section.SectionName+"' started. Invoking timer in " + delay.ToString() + " seconds.");
 
-                    aTimer = new System.Timers.Timer(30000);
+                    aTimer = new System.Timers.Timer(delay * 1000);
                     aTimer.Elapsed += (senderr, ee) => ChangeProcessAudio(senderr, ee, section.SectionName); ;
                     aTimer.AutoReset = false;
                     aTimer.Enabled = true;
@@ -140,7 +151,7 @@ namespace AutoAudioSwitch
             }
             else
             {
-                logConsole.AppendText($"{DateTime.Now.ToString("HH:mm:ss")}: " + text + "\n");
+                logConsole.AppendText($"{DateTime.Now.ToString("HH:mm:ss")}: {text}\n");
                 logConsole.ScrollToCaret();
             }
         }
@@ -183,17 +194,42 @@ namespace AutoAudioSwitch
                 return false;
             }
 
-            Log("Ini file loaded");
-            return true;
-            //foreach (SectionData section in config.Sections) {
-            //Console.WriteLine(section.SectionName);
+            Log("Ini file loaded, checking...");
 
-            //Iterate through all the keys in the current section
-            //printing the values
-            //foreach(KeyData key in section.Keys)
-            //   Console.WriteLine(key.KeyName + " = " + key.Value);
-            //}
+            foreach (SectionData section in config.Sections)
+            {
+                if (section.Keys.ContainsKey("Device"))
+                {
+                    Log(section.SectionName + ": Device set to " + section.Keys["Device"]);
+                } else
+                {
+                    Log(section.SectionName + ": Device is not set, Device is required");
+                    return false;
+                }
+                if (section.Keys.ContainsKey("Delay"))
+                {
+                    try
+                    {
+                        Int32.Parse(section.Keys["Delay"]);
+                    }
+                    catch (FormatException)
+                    {
+                        Log(section.SectionName + ": Device delay is not an integer");
+                        return false;
+                    }
+                    Log(section.SectionName + ": Device delay set to " + section.Keys["Delay"] + " seconds.");
+                }
+                else
+                {
+                    Log(section.SectionName + ": Delay will be default");
+                }
+
+
+            }
+            Log("Ini file OK");
+            return true;
         }
+        
 
         private void ChangeProcessAudio(Object source, ElapsedEventArgs e, string name)
         {
@@ -202,36 +238,24 @@ namespace AutoAudioSwitch
         private void ChangeProcessAudio(string name)
         {
             System.Diagnostics.Process pProcess = new System.Diagnostics.Process();
-            Log("Setting " + name + " Audio To Default");
-            pProcess.StartInfo.FileName = @".\SoundVolumeView.exe";
-            pProcess.StartInfo.Arguments = "/SetAppDefault \"DefaultRenderDevice \" 0 \"" + name + "\"";
+
+            pProcess = new System.Diagnostics.Process();
+            Log("Setting "+ name + " Audio To " + config[name]["Device"]);
+            pProcess.StartInfo.FileName = @".\SoundVolumeView\SoundVolumeView.exe";
+            pProcess.StartInfo.Arguments = "/SetAppDefault \"" + config[name]["Device"] + "\" all \"" + name + "\"";
             pProcess.StartInfo.UseShellExecute = false;
             pProcess.StartInfo.RedirectStandardOutput = true;
             pProcess.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
             pProcess.StartInfo.CreateNoWindow = true; //not diplay a windows
             pProcess.Start();
+
+            pProcess.WaitForExit();
+
             string output = pProcess.StandardOutput.ReadToEnd(); //The output result
             if (output != "")
             {
                 Log(output);
             }
-            pProcess.WaitForExit();
-
-            pProcess = new System.Diagnostics.Process();
-            Log("Setting "+ name + " Audio To " + config[name]["Device"]);
-            pProcess.StartInfo.FileName = @".\SoundVolumeView.exe";
-            pProcess.StartInfo.Arguments = "/SetAppDefault \"" + config[name]["Device"] + "\" 0 \"" + name + "\"";
-            pProcess.StartInfo.UseShellExecute = false;
-            pProcess.StartInfo.RedirectStandardOutput = true;
-            pProcess.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
-            pProcess.StartInfo.CreateNoWindow = true; //not diplay a windows
-            pProcess.Start();
-            output = pProcess.StandardOutput.ReadToEnd(); //The output result
-            if (output != "")
-            {
-                Log(output);
-            }
-            pProcess.WaitForExit();
         }
 
     }
