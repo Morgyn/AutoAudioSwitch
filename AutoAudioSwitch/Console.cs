@@ -19,7 +19,7 @@ namespace AutoAudioSwitch
 {
     public partial class Console : Form
     {
-        private const string tagName = "1.1";
+        private const string tagName = "1.2";
         private const int defaultDelay = 30;
         private static System.Timers.Timer aTimer;
         private static IniData config;

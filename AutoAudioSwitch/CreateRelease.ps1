@@ -11,5 +11,3 @@ $compress = @{
 Compress-Archive @compress
 
 #
-
-read-host "Press ENTER to continue..."
