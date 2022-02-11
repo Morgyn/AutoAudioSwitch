@@ -4,9 +4,9 @@ Set Application Default audio device on application start.
 ## Description
 Useful if you use a different device for specific applications who do not observe or override application audio settings.
 
-An example use of this is the game Escape from tarkov, which ignores App volume device preferences and will always use the default device.
+An example use of this is the game Escape from Tarkov, which ignores App volume device preferences and will always use the default device.
 
-This application watches for applications to start based on their filename, once they have started and a 30 second delay has passed (to be tunable) it will then set the target application's sound device to the default, then to the chosen device.
+This application watches for applications to start based on their filename, once they have started and a delay has passed, it will then set the target application's sound device to the chosen device.
 
 ## Configuration
 The format of the ini is:
